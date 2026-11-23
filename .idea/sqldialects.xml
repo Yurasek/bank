@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V00001__Create_clients_table.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V00002__Create_Accounts_table_and_Environments.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V00003__update_Accounts_table_id_type_uuid.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V00006__update_transfer_table.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V00007__create_user_table.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/test/resources/migration/V00004__create_transfer_record_table.sql" dialect="PostgreSQL" />
+  </component>
+</project>

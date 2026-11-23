@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clients</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 500;
+            color: #222;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .status {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .error {
+            color: #c0392b;
+            background: #fdf0ef;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        /* Borderless table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: none;
+            margin-top: 10px;
+        }
+
+        thead {
+            background-color: #fafafa;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border: none;
+            font-size: 14px;
+        }
+
+        th {
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr {
+            transition: background-color 0.15s ease;
+        }
+
+        tbody tr:hover {
+            background-color: #f5f7fa;
+        }
+
+        tbody tr:not(:last-child) td {
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .empty {
+            text-align: center;
+            color: #888;
+            padding: 40px;
+        }
+
+        .date-cell {
+            font-variant-numeric: tabular-nums;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Client List</h1>
+    <button onclick="loadClients()">Retrieve clients</button>
+    <button onclick="transfer()">Transfer</button>
+    <div id="status" class="status">Loading clients...</div>
+    <div id="table-container" style="display: none;">
+        <table id="clients-table">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Date of Birth</th>
+                <th>Created At</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody id="clients-body">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:8080/api/client/all';
+
+    function formatLocalDate(dateString) {
+        if (!dateString) return '—';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        return date.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+
+    function formatInstant(instantString) {
+        if (!instantString) return '—';
+        const date = new Date(instantString);
+        if (isNaN(date.getTime())) return instantString;
+        return date.toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function escapeHtml(text) {
+        if (text == null) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function transfer() {
+
+        fetch('http://localhost:8080/api/client/transfer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                fromAccountId: '7f153ad4-623b-4418-95bb-f3a817807131',
+                toAccountId: '6eac54fd-2d2f-4045-843b-6814ee909c8f',
+                amount: 15.50
+            })
+        }).then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Transfer successful:', data);
+            })
+            .catch(error => {
+                console.error('Transfer failed:', error);
+            });
+
+    }
+
+    async function loadClients() {
+        const statusEl = document.getElementById('status');
+        const tableContainer = document.getElementById('table-container');
+        const tbody = document.getElementById('clients-body');
+
+        try {
+            const response = await fetch(API_URL);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const clients = await response.json();
+
+            if (!Array.isArray(clients)) {
+                throw new Error('Expected an array of clients in response');
+            }
+
+            if (clients.length === 0) {
+                statusEl.innerHTML = '<div class="empty">No clients found.</div>';
+                statusEl.style.display = 'block';
+                tableContainer.style.display = 'none';
+                return;
+            }
+
+            tbody.innerHTML = clients.map((client, index) => `
+                    <tr>
+                        <td class="date-cell">${index + 1}</td>
+                        <td>${escapeHtml(client.firstName)}</td>
+                        <td>${escapeHtml(client.lastName)}</td>
+                        <td>${escapeHtml(client.email)}</td>
+                        <td>${escapeHtml(client.phone)}</td>
+                        <td class="date-cell">${formatLocalDate(client.dateOfBirth)}</td>
+                        <td class="date-cell">${formatInstant(client.createdAt)}</td>
+                    </tr>
+                `).join('');
+
+            statusEl.style.display = 'none';
+            tableContainer.style.display = 'block';
+
+        } catch (err) {
+            console.error('Failed to load clients:', err);
+            statusEl.innerHTML = `
+                    <div class="error">
+                        <strong>Failed to load clients</strong><br>
+                        ${escapeHtml(err.message)}<br>
+                        <small>Make sure your API is running at ${API_URL} and CORS is enabled.</small>
+                    </div>
+                `;
+            statusEl.style.display = 'block';
+            tableContainer.style.display = 'none';
+        }
+    }
+
+    // loadClients();
+</script>
+
+</body>
+</html>

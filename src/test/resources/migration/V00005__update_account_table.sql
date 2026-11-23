@@ -1,0 +1,1 @@
+alter table public.account add column updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

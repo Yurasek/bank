@@ -2,6 +2,7 @@ package org.example;
 
 import lombok.*;
 import lombok.extern.slf4j.*;
+import org.apache.commons.codec.digest.*;
 import org.example.dto.*;
 import org.example.enums.*;
 import org.example.util.*;
@@ -91,7 +92,7 @@ public class RefreshTokenService {
      * Detects token reuse attacks via family tracking.
      */
     @Transactional
-    public Dto.TokenPair rotate(String rawRefreshToken, String ipAddress, String userAgent) {
+    public Dto.AuthResponse rotate(String rawRefreshToken, String ipAddress, String userAgent) {
         String tokenHash = hashToken(rawRefreshToken);
 
         RefreshToken oldToken = refreshTokenRepository.findByTokenHash(tokenHash)
@@ -130,13 +131,6 @@ public class RefreshTokenService {
             log.debug("Refresh token expired for user {}", oldToken.getUserId());
             throw new RuntimeException("Refresh token expired");
         }
-
-        // Verify JWT signature matches
-        if (!jwtUtil.isRefreshTokenValid(rawRefreshToken)) {
-            log.warn("Refresh token signature invalid");
-            throw new RuntimeException("Invalid refresh token");
-        }
-
         // Load and validate user still active
         User user = userRepository.findById(oldToken.getUserId())
         .orElseThrow(() -> {
@@ -171,7 +165,9 @@ public class RefreshTokenService {
 
         // Generate new access token
         UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-        user.getLogin(),
+        new StringBuilder(user.getFirstName())
+                .append("/")
+                .append(user.getSecondName()).toString(),
         "",List.of()
         );
 
@@ -182,7 +178,7 @@ public class RefreshTokenService {
 
         log.debug("Rotated token for user {}, family {}", user.getId(), oldToken.getFamily());
 
-        return new Dto.TokenPair(accessToken, newRawToken);
+        return new Dto.AuthResponse(accessToken, newRawToken, Dto.AuthStatus.SUCCESS, user.getClientId());
     }
 
     // ═════════════════════════════════════════════════════════════════
@@ -263,5 +259,9 @@ public class RefreshTokenService {
             return "unknown";
         }
         return userAgent.length() > 500 ? userAgent.substring(0, 500) : userAgent;
+    }
+
+    public RefreshToken save(RefreshToken token){
+        return refreshTokenRepository.save(token);
     }
 }

@@ -1,8 +1,6 @@
 package org.example.util;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,16 +19,13 @@ public class JwtUtil {
 
     private final SecretKey secretKey;
     private final long accessTokenExpirationMs;
-    private final long refreshTokenExpirationMs;
 
     public JwtUtil(
     @Value("${jwt.secret}") String secret,
-    @Value("${jwt.access-expiration:900000}") long accessTokenExpirationMs,  // 15 min
-    @Value("${jwt.refresh-expiration:604800000}") long refreshTokenExpirationMs  // 7 days
+    @Value("${jwt.access-expiration:900000}") long accessTokenExpirationMs  // 15 min
     ) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.accessTokenExpirationMs = accessTokenExpirationMs;
-        this.refreshTokenExpirationMs = refreshTokenExpirationMs;
     }
 
     public String generateAccessToken(UserDetails userDetails, UUID clientId) {
@@ -45,23 +40,18 @@ public class JwtUtil {
         .compact();
     }
 
-    public String generateRefreshToken(UserDetails userDetails) {
-        Instant now = Instant.now();
-        return Jwts.builder()
-        .subject(userDetails.getUsername())
-        .claim("type", "REFRESH")
-        .issuedAt(Date.from(now))
-        .expiration(Date.from(now.plusMillis(refreshTokenExpirationMs)))
-        .signWith(secretKey)
-        .compact();
-    }
-
     public Claims parseToken(String token) {
-        return Jwts.parser()
-        .verifyWith(secretKey)
-        .build()
-        .parseSignedClaims(token)
-        .getPayload();
+        Claims claims = Jwts.parser()
+            .verifyWith(secretKey)
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
+        
+        if (claims.getSubject() == null || claims.getSubject().isBlank()) {
+            throw new MalformedJwtException("JWT subject (sub) claim is missing");
+        }
+
+        return claims;
     }
 
     public boolean isTokenValid(String token) {
@@ -85,19 +75,5 @@ public class JwtUtil {
     @SuppressWarnings("unchecked")
     public List<String> extractRoles(String token) {
         return (List<String>) parseToken(token).get("roles");
-    }
-
-    public boolean isRefreshTokenValid(String token) {
-        try {
-            Claims claims = parseToken(token);
-
-            boolean isRefreshType = "REFRESH".equals(claims.get("type"));
-            boolean notExpired = claims.getExpiration().after(Date.from(Instant.now()));
-
-            return isRefreshType && notExpired;
-
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
     }
 }

@@ -14,7 +14,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users", schema = "identity")
+@Table(name = "users", schema = "public")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,7 +26,10 @@ public class User {
 
 // Login identifier — can be email, phone, or username
     @Column(unique = true)
-    private String login;
+    private String firstName;
+    
+    @Column(unique = true, name = "last_name")
+    private String secondName;
 
     // NEVER expose this, NEVER join to other tables on this
      private String passwordHash;

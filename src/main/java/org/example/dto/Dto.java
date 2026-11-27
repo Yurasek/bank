@@ -32,7 +32,8 @@ public class Dto {
     ) {}
 
     public record LoginRequest(
-    String login,
+    String firstName,
+    String secondName,
     String password,
     Optional<String> mfaCode
     ) {}

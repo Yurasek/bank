@@ -1,5 +1,6 @@
 package org.example.config;
 
+import jakarta.servlet.http.*;
 import lombok.RequiredArgsConstructor;
 import org.example.filter.*;
 import org.springframework.context.annotation.Bean;
@@ -10,6 +11,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.*;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,39 +29,29 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationProvider authenticationProvider) throws Exception {
         http
-        // Disable CSRF for stateless JWT API
-        .csrf(csrf -> csrf.disable())
-
-        // Stateless session
+        .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(session ->
         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         )
-
-        // URL authorization
+        .exceptionHandling(ex -> ex
+        .authenticationEntryPoint((request, response, authException) ->
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage())
+        )
+        )
         .authorizeHttpRequests(auth -> auth
-        // Public endpoints
-        .requestMatchers("/api/v1/auth/**").permitAll()
+        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/signup", "/api/v1/auth/refresh").permitAll()
         .requestMatchers("/actuator/health").permitAll()
-
-        // MFA-required endpoints (example)
         .requestMatchers("/api/v1/transfers/**").authenticated()
-
-        // Role-based access
         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
         .requestMatchers("/api/v1/advisor/**").hasAnyRole("ADVISOR", "ADMIN")
-
-        // All other endpoints need authentication
         .anyRequest().authenticated()
         )
-
-        // Authentication provider for login endpoint
         .authenticationProvider(authenticationProvider)
-
-        // Add JWT filter BEFORE UsernamePasswordAuthenticationFilter
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 
     @Bean
     public AuthenticationProvider authenticationProvider(

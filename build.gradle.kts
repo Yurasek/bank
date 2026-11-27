@@ -14,6 +14,10 @@ plugins {
 group = "org.example"
 version = "1.0-SNAPSHOT"
 
+object Versions {
+    val lombokVersion = "1.18.48"
+}
+
 repositories {
     mavenCentral()
 }
@@ -33,11 +37,12 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
 
-    compileOnly("org.projectlombok:lombok:1.18.48")
-    annotationProcessor("org.projectlombok:lombok:1.18.48")
+    compileOnly("org.projectlombok:lombok:${Versions.lombokVersion}")
+    annotationProcessor("org.projectlombok:lombok:${Versions.lombokVersion}")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
+    testCompileOnly("org.projectlombok:lombok:${Versions.lombokVersion}")
+    testAnnotationProcessor("org.projectlombok:lombok:${Versions.lombokVersion}")
 
-    testCompileOnly("org.projectlombok:lombok:1.18.48")
-    testAnnotationProcessor("org.projectlombok:lombok:1.18.48")
     testImplementation("org.assertj:assertj-core:3.26.3")
 
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
@@ -47,6 +52,7 @@ dependencies {
     testImplementation("org.testcontainers:postgresql")
 
     annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
+    implementation("commons-codec:commons-codec:1.23.0")
 }
 
 tasks.test {

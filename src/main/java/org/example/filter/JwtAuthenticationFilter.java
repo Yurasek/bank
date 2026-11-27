@@ -10,7 +10,6 @@ import org.example.User;
 import org.example.util.*;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.context.*;
-import org.springframework.security.core.userdetails.*;
 import org.springframework.security.web.authentication.*;
 import org.springframework.stereotype.*;
 import org.springframework.web.filter.*;
@@ -74,7 +73,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // Optional: check if user still exists and is active
             // This hits DB but ensures token isn't for deleted user
-            Optional<User> userDetails = userRepository.findByLogin(username);
+            Optional<User> userDetails = userRepository.findByFirstNameAndSecondName(username.split("/")[0], username.split("/")[1]);
             if (userDetails == null) {
                 log.warn("User {} not found", username);
                 filterChain.doFilter(request, response);
@@ -86,7 +85,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UUID.randomUUID(), // or extract from token if you put userId there
             clientId,
             username,
-            roles,
+            List.of(),
             true // or extract from token
             );
 

@@ -1,7 +1,7 @@
 package org.example;
 
 import org.example.dto.Dto;
-import org.example.mapping.ClientMapper;
+import org.example.mapping.EntityMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,7 +13,7 @@ public class BankService {
     ClientRepository clientRepository;
 
     @Autowired
-    ClientMapper clientMapper;
+    EntityMapper entityMapper;
 
     public BankService(ClientRepository clientRepository) {
         this.clientRepository = clientRepository;
@@ -21,6 +21,6 @@ public class BankService {
 
 //    @Transactional
     public List<Dto.ClientDto> retrieveAllClients(){
-        return clientRepository.findAll().stream().map(it -> clientMapper.toDto(it)).toList();
+        return clientRepository.findAll().stream().map(it -> entityMapper.toDto(it)).toList();
     }
 }

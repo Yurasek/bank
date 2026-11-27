@@ -2,7 +2,9 @@ package org.example;
 
 import jakarta.servlet.http.*;
 import lombok.*;
+import org.example.client.*;
 import org.example.dto.*;
+import org.example.enums.*;
 import org.example.util.*;
 import org.springframework.http.*;
 import org.springframework.security.authentication.*;
@@ -22,33 +24,51 @@ public class AuthService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
+    private final ClientService clientService;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenService refreshTokenService;
 
     public void signup(Dto.LoginRequest req) {
-        if (userRepository.existsByLogin(req.login())) {
+        if (userRepository.existsBySecondNameAndFirstName(req.firstName(), req.secondName())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Login or email already taken");
         }
 
         User user = new User();
-        user.setLogin(req.login());
+        user.setFirstName(req.firstName());
+        user.setSecondName(req.secondName());
         user.setPasswordHash(passwordEncoder.encode(req.password()));
+        user.setStatus(UserStatus.ACTIVE);
+        user.setLastLoginAt(Instant.now());
+        
+        var client = Client.builder()
+        .firstName("")
+        .lastName("")
+            .phone("")
+            .email("")
+            .createdAt(Instant.now())
+            .accounts(List.of())
+            .build();
+        
+        user.setClientId(clientService.create(client).getId());
+        
         userRepository.save(user);
 
     }
 
-    public Dto.AuthResponse login(Dto.LoginRequest request, HttpServletRequest httpRequest){
+    public Dto.AuthResponse login(Dto.LoginRequest request, HttpServletRequest httpRequest) {
         // Step 1: Authenticate credentials
         Authentication authentication = authenticationManager.authenticate(
         new UsernamePasswordAuthenticationToken(
-        request.login(),
+        new StringBuilder(request.firstName())
+                    .append("/")
+                    .append(request.secondName()).toString(),
         request.password()
         )
         );
 
         // Step 2: Load user details
-        User user = userRepository.findByLogin(request.login())
+        User user = userRepository.findByFirstNameAndSecondName(request.firstName(), request.secondName())
         .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         // Step 5: Generate tokens
@@ -59,18 +79,23 @@ public class AuthService {
         user.getClientId()
         );
 
-        String refreshToken = jwtUtil.generateRefreshToken(userDetails);
+        String refreshToken = refreshTokenService.createRefreshToken(
+        user.getId(),
+        httpRequest.getRemoteAddr(),
+        httpRequest.getHeader("User-Agent"));
+
         RefreshToken entity = new RefreshToken();
 
         entity.setId(UUID.randomUUID());
         entity.setUserId(user.getId());
         entity.setTokenHash(refreshToken);
         entity.setIssuedAt(Instant.now());
+        entity.setFamily(UUID.randomUUID());
         entity.setExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS));
         entity.setIpAddress(httpRequest.getRemoteAddr());
         entity.setUserAgent(httpRequest.getHeader("User-Agent"));
 
-        refreshTokenRepository.save(entity);
+        refreshTokenService.save(entity);
 
         user.lastLoginAt = Instant.now();
 
@@ -78,60 +103,19 @@ public class AuthService {
         userRepository.save(user);
 
         return new Dto.AuthResponse(
-            accessToken,
-            refreshToken,
-            Dto.AuthStatus.SUCCESS,
-            user.getClientId()
+        accessToken,
+        refreshToken,
+        Dto.AuthStatus.SUCCESS,
+        user.getClientId()
         );
     }
 
-    public Dto.AuthResponse refresh(Dto.RefreshRequest request, HttpServletRequest httpRequest){
+    public Dto.AuthResponse refresh(Dto.RefreshRequest request, HttpServletRequest httpRequest) {
         // Validate refresh token
-        RefreshToken storedToken = refreshTokenRepository
-        .findByTokenHash(request.refreshToken())
-        .filter(t -> t.getExpiresAt().isAfter(Instant.now()))
-        .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
-
-        // Load user
-        User user = userRepository.findById(storedToken.getUserId())
-        .orElseThrow(() -> new BadCredentialsException("User not found"));
-
-        // Rotate refresh token (security best practice)
-        refreshTokenRepository.delete(storedToken);
-
-        String newAccessToken = jwtUtil.generateAccessToken(
-        new org.springframework.security.core.userdetails.User(
-        user.getLogin(),
-        "",
-        List.of()
-        ),
-        user.getClientId()
-        );
-
-        String newRefreshToken = jwtUtil.generateRefreshToken(
-        new org.springframework.security.core.userdetails.User(
-        user.getLogin(),
-        "",
-        List.of()
-        )
-        );
-
-        refreshTokenRepository.save(new RefreshToken(
-        UUID.randomUUID(),
-        user.getId(),
-        newRefreshToken, UUID.randomUUID(), Instant.now(),
-        Instant.now().plus(7, ChronoUnit.DAYS),
-        null,
-        null,
-        httpRequest.getRemoteAddr(),
-        httpRequest.getHeader("User-Agent")
-        ));
-
-        return new Dto.AuthResponse(
-        newAccessToken,
-        newRefreshToken,
-        Dto.AuthStatus.SUCCESS,
-        user.getClientId()
+        return refreshTokenService.rotate(
+            request.refreshToken(),
+            httpRequest.getRemoteAddr(),
+            httpRequest.getHeader("User-Agent")
         );
     }
 }

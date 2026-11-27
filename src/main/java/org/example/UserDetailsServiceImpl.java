@@ -12,11 +12,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        org.example.User user = userRepository.findByLogin(username)
+        org.example.User user = userRepository.findByFirstNameAndSecondName(username.split("/")[0], username.split("/")[1])
         .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
         return org.springframework.security.core.userdetails.User.builder()
-        .username(user.getLogin())
+        .username(new StringBuilder(user.getFirstName()).append("/").append(user.getSecondName()).toString())
         .password(user.getPasswordHash())
         .build();
     }

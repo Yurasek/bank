@@ -1,6 +1,7 @@
 package org.example;
 
 import jakarta.persistence.*;
+import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -9,7 +10,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
+@Builder
 @Table(name = "clients")
+@AllArgsConstructor
+@NoArgsConstructor
 public class Client {
 
     @Id

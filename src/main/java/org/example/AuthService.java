@@ -84,19 +84,6 @@ public class AuthService {
         httpRequest.getRemoteAddr(),
         httpRequest.getHeader("User-Agent"));
 
-        RefreshToken entity = new RefreshToken();
-
-        entity.setId(UUID.randomUUID());
-        entity.setUserId(user.getId());
-        entity.setTokenHash(refreshToken);
-        entity.setIssuedAt(Instant.now());
-        entity.setFamily(UUID.randomUUID());
-        entity.setExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS));
-        entity.setIpAddress(httpRequest.getRemoteAddr());
-        entity.setUserAgent(httpRequest.getHeader("User-Agent"));
-
-        refreshTokenService.save(entity);
-
         user.lastLoginAt = Instant.now();
 
         // Step 6: Update last login
